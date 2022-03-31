@@ -8,6 +8,13 @@ Dockerfile里面有我的私人token（有效期90天），用于访问IAPCP的p
 docker build -t hook_build -f Dockerfile .
 ```
 
+## 注意
+**不要**运行
+```bash
+apt install build-essential
+```
+要不然在c++编译的时候**大概率**会报libstdc++.so.6的版本不匹配的错误
+
 ## 测试样例
 ### LLVM编译
 ```bash
