@@ -8,7 +8,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt -y update && \
         DEBIAN_FRONTEND=noninteractive apt -y install apt-transport-https ca-certificates && \
         sed -i "s/http/https/g" /etc/apt/sources.list && \
         DEBIAN_FRONTEND=noninteractive apt update && \ 
-        apt -y install build-essential curl git wget libgmp-dev libmpfr-dev libmpc-dev python3-pip
+        apt -y install build-essential curl git wget libgmp-dev libmpfr-dev libmpc-dev python3-pip ninja-build cmake bison flex texinfo
 
 # prepare gcc_parser
 RUN cd /root && \
@@ -24,4 +24,13 @@ RUN cd /root && \
         rm /usr/lib/x86_64-linux-gnu/libstdc++.so.6 && \
         ln -s /usr/lib64/libstdc++.so.6.0.29 /usr/lib/x86_64-linux-gnu/libstdc++.so.6
 
-
+# prepare ld_hook
+RUN cd /root && \
+        mkdir ld_hook && \
+        cd ld_hook && \
+        git clone https://kongjiadongyuan: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@github.com/IAPCP/ld_hook.git && \
+        mkdir build && \
+        cd build && \
+        ../ld_hook/configure --prefix=/usr && \
+        make -j${nproc} && \
+        make install
