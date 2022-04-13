@@ -30,7 +30,7 @@ def extract_package(data):
 
 
 if __name__ == '__main__':
-    data = get_url("https://packages.debian.org/stable/allpackages?format=txt.gz")
+    data = get_url("https://packages.ubuntu.com/focal/allpackages?format=txt.gz")
     data = extract_gzip(data)
     import pprint
     pprint.pprint(extract_package(data))

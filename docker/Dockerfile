@@ -1,4 +1,4 @@
-FROM debian:bullseye
+FROM ubuntu:20.04
 
 # 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
 
@@ -9,7 +9,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt -y update && \
         sed -i "s/http/https/g" /etc/apt/sources.list && \
         DEBIAN_FRONTEND=noninteractive apt -y update && \ 
         DEBIAN_FRONTEND=noninteractive apt -y upgrade && \
-        apt -y install build-essential curl git wget libgmp-dev libmpfr-dev libmpc-dev python3-pip ninja-build cmake bison flex texinfo dpkg-dev devscripts
+        DEBIAN_FRONTEND=noninteractive apt -y install build-essential curl git wget libgmp-dev libmpfr-dev libmpc-dev python3-pip ninja-build cmake bison flex texinfo dpkg-dev devscripts
 
 # prepare gcc_parser
 RUN cd /root && \
