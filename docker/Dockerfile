@@ -32,3 +32,6 @@ RUN cd /root && \
         ../ld_hook/configure --prefix=/usr && \
         make -j${nproc} && \
         make install
+
+COPY compile.sh /root/compile.sh
+RUN chmod +x /root/compile.sh
