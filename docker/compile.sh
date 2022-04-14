@@ -23,7 +23,7 @@ apt -y build-dep ${1}
 # ln -s /usr/lib64/libstdc++.so.6.0.29 /usr/lib/x86_64-linux-gnu/libstdc++.so.6
 
 # Prepare environment variables
-export COMPILE_COMMANDS_DB=${BUILD_PATH}/compile_commands.db
+export COMPILE_COMMANDS_DB=${DB_PATH}/compile_commands.db
 export PROJ_ROOT=${BUILD_PATH}
 export ARCHIVE=${ARCHIVE_PATH}
 
