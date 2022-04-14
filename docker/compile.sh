@@ -1,7 +1,15 @@
 #!/bin/sh
-mkdir -p /root/package/build
-mkdir -p /root/package/archive
-export DEBIAN_FRONTEND=noninteractiva
+
+# Prepare directories
+BUILD_PATH=/root/build
+DB_PATH=/root/package
+ARCHIVE_PATH=/root/package/archive
+mkdir -p ${DB_PATH}
+mkdir -p ${ARCHIVE_PATH}
+mkdir -p ${BUILD_PATH}
+
+# Set noninteractive
+export DEBIAN_FRONTEND=noninteractive
 
 # Update
 apt -y update
@@ -11,13 +19,13 @@ apt -y upgrade
 apt -y build-dep ${1}
 
 # Restore libstdc++ to self-compiled version
-rm /usr/lib/x86_64-linux-gnu/libstdc++.so.6
-ln -s /usr/lib64/libstdc++.so.6.0.29 /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+# rm /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+# ln -s /usr/lib64/libstdc++.so.6.0.29 /usr/lib/x86_64-linux-gnu/libstdc++.so.6
 
 # Prepare environment variables
-export COMPILE_COMMANDS_DB=/root/package/compile_commands.db
-export PROJ_ROOT=/root/package/build
-export ARCHIVE=/root/package/archive
+export COMPILE_COMMANDS_DB=${BUILD_PATH}/compile_commands.db
+export PROJ_ROOT=${BUILD_PATH}
+export ARCHIVE=${ARCHIVE_PATH}
 
 # Start build process
-cd /root/package/build && apt -y source --compile ${1}
+cd ${PROJ_ROOT} && apt -y source --compile ${1}
