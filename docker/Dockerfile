@@ -5,9 +5,6 @@ FROM ubuntu:20.04
 COPY sources.list /etc/apt/sources.list
 
 RUN DEBIAN_FRONTEND=noninteractive apt -y update && \
-        DEBIAN_FRONTEND=noninteractive apt -y install apt-transport-https ca-certificates && \
-        sed -i "s/http/https/g" /etc/apt/sources.list && \
-        DEBIAN_FRONTEND=noninteractive apt -y update && \ 
         DEBIAN_FRONTEND=noninteractive apt -y upgrade && \
         DEBIAN_FRONTEND=noninteractive apt -y install build-essential curl git wget libgmp-dev libmpfr-dev libmpc-dev python3-pip ninja-build cmake bison flex texinfo dpkg-dev devscripts
 
