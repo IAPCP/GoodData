@@ -32,5 +32,8 @@ def extract_package(data):
 if __name__ == '__main__':
     data = get_url("https://packages.ubuntu.com/focal/allpackages?format=txt.gz")
     data = extract_gzip(data)
-    import pprint
-    pprint.pprint(extract_package(data))
+    packages = extract_package(data)
+    import json
+    import sys
+    with open(sys.argv[1], 'w') as f:
+        json.dump(packages, f)
