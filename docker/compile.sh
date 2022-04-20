@@ -19,8 +19,8 @@ apt -y upgrade
 apt -y build-dep ${1}
 
 # Restore libstdc++ to self-compiled version
-# rm /usr/lib/x86_64-linux-gnu/libstdc++.so.6
-# ln -s /usr/lib64/libstdc++.so.6.0.29 /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+rm /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+ln -s /usr/lib64/libstdc++.so.6 /usr/lib/x86_64-linux-gnu/libstdc++.so.6
 
 # Prepare environment variables
 export COMPILE_COMMANDS_DB=${DB_PATH}/compile_commands.db
