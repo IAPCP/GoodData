@@ -4,15 +4,15 @@ import os
 import shutil
 import docker
 import logging
-import enum
 import multiprocessing
 import time
 import atexit
+from package_utils import *
 
 IMAGE = "hook_build:9.3.0"
 COMPILE_SCRIPT = "/root/compile.sh"
 
-PackageStatus = enum.Enum("PackageStatus", ("NOT_STARTED", "EXIT_EARLY", "DONE", "ERROR"))
+
 
 def do_compile(package_name, path):
     logger = logging.getLogger(package_name)
@@ -37,15 +37,7 @@ def do_compile(package_name, path):
         f.write(result)
     os.system(f"touch {os.path.join(save_path, 'done')}")
 
-def package_status(package_name, path):
-    save_path = os.path.join(path, package_name)
-    if not os.path.exists(save_path):
-        return PackageStatus.NOT_STARTED
-    if os.path.exists(os.path.join(save_path, "done")):
-        return PackageStatus.DONE
-    if os.path.exists(os.path.join(save_path, "error")):
-        return PackageStatus.ERROR
-    return PackageStatus.EXIT_EARLY
+
 
 def compile_package(package_name, path):
     logger = logging.getLogger(__file__)
