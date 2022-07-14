@@ -142,7 +142,7 @@ if __name__ == '__main__':
     parser.add_argument("--parallel", type=int, default=1, help="Number of parallel compile, default 1") 
     args = parser.parse_args()
     if args.log_path is None:
-        logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        logging.basicConfig(log_level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     else:
         logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', filename=args.log_path)
     

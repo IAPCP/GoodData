@@ -5,9 +5,12 @@ import docker
 def remove_by_image(image_name):
     client = docker.from_env()
     for container in client.containers.list(all=True):
-        if container.image.tags[0] == image_name:
-            print(container.id)
-            container.remove(force=True)
+        try:
+            if container.image.tags[0] == image_name:
+                print(container.id)
+                container.remove(force=True)
+        except Exception:
+            pass
 
 if __name__ == '__main__':
     import sys
