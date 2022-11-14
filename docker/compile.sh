@@ -25,7 +25,7 @@ ln -s /usr/lib64/libstdc++.so.6 /usr/lib/x86_64-linux-gnu/libstdc++.so.6
 # Prepare environment variables
 export COMPILE_COMMANDS_DB=${DB_PATH}/compile_commands.db
 export PROJ_ROOT=${BUILD_PATH}
-export ARCHIVE=${ARCHIVE_PATH}
+export LD_ARCHIVE=${ARCHIVE_PATH}
 
 # Start build process
 cd ${PROJ_ROOT} && apt -y source --compile ${1}

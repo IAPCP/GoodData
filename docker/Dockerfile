@@ -12,7 +12,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt -y update && \
 RUN cd /root && \
         mkdir ld_hook && \
         cd ld_hook && \
-        git clone https://kongjiadongyuan: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@github.com/IAPCP/ld_hook.git && \
+        git clone https://kongjiadongyuan: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@github.com/IAPCP/ld_hook.git && \
         mkdir build && \
         cd build && \
         ../ld_hook/configure --prefix=/usr && \
@@ -24,7 +24,7 @@ RUN cd /root && \
         mkdir gcc_parser && \
         cd gcc_parser && \
         pip3 install robotpy-cppheaderparser && \
-        git clone https://kongjiadongyuan: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@github.com/IAPCP/gcc_parser.git && \
+        git clone https://kongjiadongyuan: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@github.com/IAPCP/gcc_parser.git && \
         cd gcc_parser && \
         git checkout 9.3.0 && \
         cd .. && \
