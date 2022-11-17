@@ -32,9 +32,18 @@ RUN cd /root && \
         cd build && \
         ../gcc_parser/configure --prefix=/usr -enable-language=c,c++ --disable-multilib --disable-werror --disable-bootstrap && \
         make -j${nproc} && \
-        make install && \
-        rm /usr/lib/x86_64-linux-gnu/libstdc++.so.6 && \
-        ln -s /usr/lib64/libstdc++.so.6 /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+        make install
+
+RUN rm /usr/lib/x86_64-linux-gnu/libstdc++.so.6 && \
+        ln -s /usr/lib64/libstdc++.so.6 /usr/lib/x86_64-linux-gnu/libstdc++.so.6 && \
+        rm /usr/bin/x86_64-linux-gnu-gcc && \
+        ln -s gcc /usr/bin/x86_64-linux-gnu-gcc && \
+        rm /usr/bin/x86_64-linux-gnu-gcc-ar && \
+        ln -s gcc-ar /usr/bin/x86_64-linux-gnu-gcc-ar && \
+        rm /usr/bin/x86_64-linux-gnu-gcc-nm && \
+        ln -s gcc-nm /usr/bin/x86_64-linux-gnu-gcc-nm && \
+        rm /usr/bin/x86_64-linux-gnu-gcc-ranlib && \
+        ln -s gcc-ranlib /usr/bin/x86_64-linux-gnu-gcc-ranlib
 
 COPY compile.sh /root/compile.sh
 RUN chmod +x /root/compile.sh
