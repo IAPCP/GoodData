@@ -230,7 +230,7 @@ def clean_container():
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    with open("packages", "r") as f:
+    with open("packages.json", "r") as f:
         import json
         package_list = json.load(f)
     packages = []
@@ -238,5 +238,5 @@ if __name__ == '__main__':
         packages.append(package["package"])
     import sys
     project = CompileProject(sys.argv[1], packages)
-    compile_packages_parallel(project, 3, 24)
+    compile_packages_parallel(project, 3, 4)
     
