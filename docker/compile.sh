@@ -7,33 +7,21 @@ if [ $# -ne 2 ]; then
 fi
 
 # Prepare directories
-BUILD_PATH=/root/build
-ARCHIVE_PATH=/root/package
-LD_ARCHIVE=/root/package/ld
-GCC_ARCHIVE=/root/package/gcc
+BUILD_PATH=/workspace/build
+ARCHIVE_PATH=/workspace/package
+LD_ARCHIVE=${ARCHIVE_PATH}/ld
+GCC_ARCHIVE=${ARCHIVE_PATH}/gcc
 COMPILE_COMMANDS_DB=${ARCHIVE_PATH}/compile_commands.sqlite3
 GCC_PARSER_HIJACK_DWARF4=1
 GCC_PARSER_HIJACK_OPTIMIZATION=${2}
 
 mkdir -p ${BUILD_PATH}
-
 mkdir -p ${ARCHIVE_PATH}
 mkdir -p ${LD_ARCHIVE}
 mkdir -p ${GCC_ARCHIVE}
 
 # Set noninteractive
 export DEBIAN_FRONTEND=noninteractive
-
-# Update
-apt -y update
-apt -y upgrade
-
-# Install build dependencies
-apt -y build-dep ${1}
-
-# Restore libstdc++ to self-compiled version
-rm /usr/lib/x86_64-linux-gnu/libstdc++.so.6
-ln -s /usr/lib64/libstdc++.so.6 /usr/lib/x86_64-linux-gnu/libstdc++.so.6
 
 # Prepare environment variables
 export ARCHIVE_PATH
@@ -50,5 +38,5 @@ if [ $? -eq 0 ]; then
     touch ${ARCHIVE_PATH}/compile_succeed
     exit 0
 else
-    exit 1
+    exit 0
 fi

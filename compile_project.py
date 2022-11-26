@@ -1,4 +1,5 @@
 import atexit
+import sys
 import logging
 import os
 import shutil
@@ -51,7 +52,7 @@ class CompileProject:
         res = cursor.fetchall()
         for package_name, optimization_level, dirname in res:
             self.logger.info("Resetting package %s of O%s to NOT_STARTED, removing the directory %s", package_name, optimization_level, dirname)
-            os.system(f"sudo rm -rf {os.path.join(self.packages_root, dirname)}")
+            os.system(f"rm -rf {os.path.join(self.packages_root, dirname)}")
         cursor.execute("UPDATE packages SET status = ? WHERE status = ?", ("NOT_STARTED", "STARTED"))
         self.db_conn.commit()
     
@@ -98,18 +99,24 @@ class CompileProject:
         self.logger.info("Compiling package %s with optimization_level -O%s in %s", package_name, optimization_level, save_path)
         try:
             os.system(f"mkdir -p {save_path}")
+            command_str = f"/workspace/bin/prepare_user.sh {os.getuid()} {os.getgid()}"
+            command_str += " && "
+            command_str += f"/workspace/bin/prepare_dep.sh {package_name}"
+            command_str += " && "
+            command_str += f"su build /workspace/bin/compile.sh {package_name} {optimization_level}"
+            
             client = docker.from_env()
             result = client.containers.run(
                 image=IMAGE,
                 command=[
                     "/bin/sh", 
                     "-c", 
-                    f"/root/compile.sh {package_name} {optimization_level} 2>&1 > /root/package/output.log || chown -R {os.getgid()}:{os.getuid()} /root/package"
+                    command_str
                 ],
                 remove=True,
                 volumes={
                     os.path.abspath(save_path): {
-                        "bind": "/root/package",
+                        "bind": "/workspace/package",
                         "mode": "rw"
                     }
                 }
@@ -117,7 +124,7 @@ class CompileProject:
         except docker.errors.APIError:
             return "STARTED"
         except Exception as e:
-            self.logger.error("Python error compiling package %s", package_name)
+            self.logger.error(f"Python error compiling package {package_name} with optimization_level -O{optimization_level}")
             self.logger.error(f"Error: {e}")
             import traceback
             self.logger.error(f"Trace: {traceback.format_exc()}")
@@ -125,7 +132,7 @@ class CompileProject:
                 f.write(e.__str__())
             return "PYTHON_ERROR"
         if os.path.exists(os.path.join(save_path, "compile_succeed")):
-            self.logger.info(f"Package {package_name} compile succeed")
+            self.logger.info(f"Package {package_name} with optimization_level -O{optimization_level} compile succeed")
             return "DONE"
         else:
             return "COMPILE_ERROR"
@@ -142,7 +149,7 @@ class CompileProject:
                 if tried >= retry:
                     break
                 self.logger.info(f"{package_name} with optimization_level O{optimization_level} compile error, retrying {tried + 1}/{retry}")
-                os.system(f"sudo rm -rf {dirname}")
+                os.system(f"rm -rf {dirname}")
                 tried += 1
             else:
                 raise Exception("Invalid status")
@@ -228,7 +235,7 @@ def clean_container():
             except Exception:
                 print(f"Failed to remove container {container.id}")
 
-if __name__ == '__main__':
+def main():
     logging.basicConfig(level=logging.INFO)
     with open("packages.json", "r") as f:
         import json
@@ -236,7 +243,19 @@ if __name__ == '__main__':
     packages = []
     for package in package_list:
         packages.append(package["package"])
-    import sys
     project = CompileProject(sys.argv[1], packages)
-    compile_packages_parallel(project, 3, 4)
+    compile_packages_parallel(project, 3, 8)
+
+def test():
+    logging.basicConfig(level=logging.INFO)
+    packages = [
+        "nginx",
+        "tree",
+        "sl"
+    ]
+    project = CompileProject(sys.argv[1], packages)
+    compile_packages(project, 3)
+
+if __name__ == '__main__':
+    main()
     
