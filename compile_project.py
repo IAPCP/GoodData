@@ -244,7 +244,7 @@ def main():
     for package in package_list:
         packages.append(package["package"])
     project = CompileProject(sys.argv[1], packages)
-    compile_packages_parallel(project, 3, 8)
+    compile_packages_parallel(project, 3, 12)
 
 def test():
     logging.basicConfig(level=logging.INFO)
