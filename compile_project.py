@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import atexit
 import sys
 import logging
@@ -8,6 +9,7 @@ import threading
 import docker
 import time
 import uuid
+import argparse
 
 IMAGE="compile_docker:latest"
 
@@ -119,7 +121,8 @@ class CompileProject:
                         "bind": "/workspace/package",
                         "mode": "rw"
                     }
-                }
+                },
+                name=f"{package_name}_O{optimization_level}"
             )
         except docker.errors.APIError:
             return "STARTED"
@@ -236,15 +239,18 @@ def clean_container():
                 print(f"Failed to remove container {container.id}")
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-r", "--retry", type=int, default=3, help="Retry times when 'compile_error' occurs")
+    parser.add_argument("-j", "--parallel", type=int, default=1, help="Max parallel jobs")
+    parser.add_argument("-p", "--project", type=str, required=True, help="Project path")
+    parser.add_argument("-l", "--list", type=str, required=True, help="List of packages to compile, must be a json file")
+    args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
-    with open("packages.json", "r") as f:
+    with open(args.list, "r") as f:
         import json
         package_list = json.load(f)
-    packages = []
-    for package in package_list:
-        packages.append(package["package"])
-    project = CompileProject(sys.argv[1], packages)
-    compile_packages_parallel(project, 3, 12)
+    project = CompileProject(args.project, package_list)
+    compile_packages_parallel(project, args.retry, args.parallel)
 
 def test():
     logging.basicConfig(level=logging.INFO)
