@@ -15,7 +15,6 @@ IMAGE="compile_docker:latest"
 
 def dir_name(package: str, optimization_level: str) -> str:
     return package + "_O" + optimization_level + "_" + uuid.uuid4().hex
-    
 
 class CompileProject:
     def __init__(self, project_root, package_list=None):
@@ -25,7 +24,7 @@ class CompileProject:
         self.initialized = os.path.exists(self.project_db_path)
         self.logger = logging.getLogger("CompileProject")
         self.db_conn = None
-        
+    
         if not self.initialized:
             self.logger.info("Project database not found, creating new one")
             os.system(f"mkdir -p {self.packages_root}")
@@ -45,6 +44,7 @@ class CompileProject:
         else:
             self.db_conn = sqlite3.connect(self.project_db_path)
         
+    def consolidate(self):
         # Reset STARTED packages to NOT_STARTED
         cursor = self.db_conn.cursor()
         cursor.execute(
@@ -250,6 +250,7 @@ def main():
         import json
         package_list = json.load(f)
     project = CompileProject(args.project, package_list)
+    project.consolidate()
     compile_packages_parallel(project, args.retry, args.parallel)
 
 def test():
@@ -260,6 +261,7 @@ def test():
         "sl"
     ]
     project = CompileProject(sys.argv[1], packages)
+    project.consolidate()
     compile_packages(project, 3)
 
 if __name__ == '__main__':
