@@ -9,6 +9,7 @@ import threading
 import docker
 import time
 import uuid
+import psutil
 import argparse
 
 IMAGE="compile_docker:latest"
@@ -265,5 +266,6 @@ def test():
     compile_packages(project, 3)
 
 if __name__ == '__main__':
-    main()
+    # main()
+    test()
     

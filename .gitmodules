@@ -1,0 +1,6 @@
+[submodule "docker/gcc_parser"]
+	path = docker/gcc_parser
+	url = git@github.com:IAPCP/gcc_parser.git
+[submodule "docker/ld_hook"]
+	path = docker/ld_hook
+	url = git@github.com:IAPCP/ld_hook.git
