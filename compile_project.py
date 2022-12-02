@@ -11,8 +11,9 @@ import time
 import uuid
 import psutil
 import argparse
+from tqdm.auto import tqdm
 
-IMAGE="compile_docker:latest"
+IMAGE="compile_docker:zbl"
 
 def dir_name(package: str, optimization_level: str) -> str:
     return package + "_O" + optimization_level + "_" + uuid.uuid4().hex
@@ -45,19 +46,33 @@ class CompileProject:
         else:
             self.db_conn = sqlite3.connect(self.project_db_path)
         
-    def consolidate(self):
-        # Reset STARTED packages to NOT_STARTED
-        cursor = self.db_conn.cursor()
-        cursor.execute(
-            "SELECT package_name, optimization_level, dirname FROM packages WHERE status = ?", 
-            ("STARTED",)
-        )
-        res = cursor.fetchall()
-        for package_name, optimization_level, dirname in res:
-            self.logger.info("Resetting package %s of O%s to NOT_STARTED, removing the directory %s", package_name, optimization_level, dirname)
-            os.system(f"rm -rf {os.path.join(self.packages_root, dirname)}")
-        cursor.execute("UPDATE packages SET status = ? WHERE status = ?", ("NOT_STARTED", "STARTED"))
-        self.db_conn.commit()
+    # def consolidate(self):
+    #     # Reset STARTED packages to NOT_STARTED
+    #     cursor = self.db_conn.cursor()
+    #     cursor.execute(
+    #         "SELECT package_name, optimization_level, dirname FROM packages WHERE status = ?", 
+    #         ("STARTED",)
+    #     )
+    #     res = cursor.fetchall()
+    #     for package_name, optimization_level, dirname in res:
+    #         self.logger.info("Resetting package %s of O%s to NOT_STARTED, removing the directory %s", package_name, optimization_level, dirname)
+    #         os.system(f"rm -rf {os.path.join(self.packages_root, dirname)}")
+    #     cursor.execute("UPDATE packages SET status = ? WHERE status = ?", ("NOT_STARTED", "STARTED"))
+    #     self.db_conn.commit()
+        
+    #     cursor = self.db_conn.cursor()
+    #     cursor.execute(
+    #         "SELECT id, dirname FROM packages WHERE status = ?",
+    #         ("NOT_STARTED", )
+    #     )
+    #     res = cursor.fetchall()
+    #     for id, dirname in res:
+    #         if os.path.exists(os.path.join(self.packages_root, dirname)):
+    #             self.logger.error("Directory %s already exists, delete it", dirname)
+    #             os.system(f"rm -rf {os.path.join(self.packages_root, dirname)}")
+    #             cursor.execute("UPDATE packages SET status = ? WHERE id = ?", ("NOT_STARTED", id))
+    #             self.db_conn.commit()
+                
     
     def db_exec(self, *args):
         db_conn = None
@@ -72,6 +87,19 @@ class CompileProject:
         db_conn.commit()
         db_conn.close()
         return res
+    
+    def consolidate(self):
+        # Check directories
+        self.logger.info("Consolidate.")
+        res = self.db_exec(
+            "SELECT id, dirname, status FROM packages"
+        )
+        for _id, dirname, status in tqdm(res):
+            if status != "DONE" and os.path.exists(os.path.join(self.packages_root, dirname)):
+                self.logger.error("Directory %s already exists, delete it", dirname)
+                os.system(f"rm -rf {os.path.join(self.packages_root, dirname)}")
+                self.set_package_status(_id, "NOT_STARTED")
+            
         
     def get_package_status(self, package_id: int) -> str:
         # NOT_FOUND, NOT_STARTED, STARTED, DONE, COMPILE_ERROR, PYTHON_ERROR
@@ -94,7 +122,7 @@ class CompileProject:
             (status, package_id)
         )
     
-    def compile_package_internal(self, package_name, optimization_level, dirname):
+    def compile_package_internal(self, package_name, optimization_level, dirname, in_memory=False):
         if not optimization_level in ("0", "1", "2", "3", "g", "s", "fast"):
             self.logger.error("Invalid optimization level: %s", optimization_level)
             raise Exception("Invalid optimization level")
@@ -203,7 +231,7 @@ def compile_packages_parallel(compile_project: CompileProject, retry: int, max_p
             if not thread.is_alive():
                 thread.join()
                 thread_list.remove(thread)
-        if len(thread_list) >= max_parallel:
+        if len(thread_list) >= max_parallel or psutil.cpu_percent() >= 90:
             time.sleep(1)
             continue
         packages = compile_project.get_packages_not_started(1)
@@ -266,6 +294,6 @@ def test():
     compile_packages(project, 3)
 
 if __name__ == '__main__':
-    # main()
-    test()
+    main()
+    # test()
     

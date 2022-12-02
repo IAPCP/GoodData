@@ -36,12 +36,7 @@ RUN rm /usr/lib/x86_64-linux-gnu/libstdc++.so.6 && \
         rm /usr/bin/x86_64-linux-gnu-gcc-ranlib && \
         ln -s gcc-ranlib /usr/bin/x86_64-linux-gnu-gcc-ranlib
 
-RUN mkdir -p /workspace/bin && \
-        chmod 1777 /workspace && \
-        mkdir /workspace/package
-
-COPY compile.sh /workspace/bin/compile.sh
-COPY prepare_dep.sh /workspace/bin/prepare_dep.sh
-COPY prepare_user.sh /workspace/bin/prepare_user.sh
-
-RUN chmod +x /workspace/bin/*
+RUN mkdir -p /workspace && \
+        chmod 1777 /workspace
+COPY compile.sh /usr/bin/compile.sh
+RUN chmod +x /usr/bin/compile.sh
