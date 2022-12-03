@@ -21,6 +21,7 @@ export COMPILE_COMMANDS_DB=${ARCHIVE_PATH}/compile_commands.sqlite3
 export GCC_PARSER_HIJACK_DWARF4=${GCC_PARSER_HIJACK_DWARF4:-1}
 export GCC_PARSER_HIJACK_OPTIMIZATION=${GCC_PARSER_HIJACK_OPTIMIZATION:-0}
 
+# Prepare user with same uid and gid as host
 addgroup --gid ${gid} build
 adduser --disabled-password --gecos "" --uid ${uid} --gid ${gid} build
 
@@ -30,6 +31,7 @@ mkdir -p ${ARCHIVE_PATH}
 mkdir -p ${LD_ARCHIVE}
 mkdir -p ${GCC_ARCHIVE}
 
+# Change ownership of directories
 chown -R build:build ${BUILD_PATH}
 chown -R build:build ${ARCHIVE_PATH}
 chown -R build:build ${SAVE_PATH}
@@ -37,10 +39,14 @@ chown -R build:build ${SAVE_PATH}
 # Install build dependencies
 apt -y build-dep ${package_name}
 
-# Restore libstdc++ to self-compiled version
+# Restore libstdc++ to self-compiled version, as build-dep may change
 rm /usr/lib/x86_64-linux-gnu/libstdc++.so.6
 ln -s /usr/lib64/libstdc++.so.6 /usr/lib/x86_64-linux-gnu/libstdc++.so.6
-    
+
+# Prepare compile.log
+touch ${SAVE_PATH}/compile.log
+chown build:build ${SAVE_PATH}/compile.log    
+
 {
     # Start build process
     su build -c "cd ${BUILD_PATH} && apt -y source --compile ${1}"
@@ -49,9 +55,12 @@ ln -s /usr/lib64/libstdc++.so.6 /usr/lib/x86_64-linux-gnu/libstdc++.so.6
         compile_succeed=1
     fi
 
-    # Save build artifacts
-    su build -c "cp -r ${BUILD_PATH}/* ${ARCHIVE_PATH}"
-    if [ ${compile_succeed} -eq 1 ]; then
-        su build -c "touch ${ARCHIVE_PATH}/compile_succeed"
+    # Save build artifacts to SAVE_PATH
+    if [ ${SAVE_PATH} != ${ARCHIVE_PATH} ]; then
+        su build -c "cp -r ${ARCHIVE_PATH}/* ${SAVE_PATH}"
     fi
-} 2>&1 > ${ARCHIVE_PATH}/compile.log
+
+    if [ ${compile_succeed:=0} -eq 1 ]; then
+        su build -c "touch ${SAVE_PATH}/compile_succeed"
+    fi
+} 2>&1 > ${SAVE_PATH}/compile.log

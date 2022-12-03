@@ -14,6 +14,7 @@ import argparse
 from tqdm.auto import tqdm
 
 IMAGE="compile_docker:zbl"
+SLOW_START_INTERVAL=30
 
 def dir_name(package: str, optimization_level: str) -> str:
     return package + "_O" + optimization_level + "_" + uuid.uuid4().hex
@@ -45,34 +46,6 @@ class CompileProject:
             self.db_conn.commit()
         else:
             self.db_conn = sqlite3.connect(self.project_db_path)
-        
-    # def consolidate(self):
-    #     # Reset STARTED packages to NOT_STARTED
-    #     cursor = self.db_conn.cursor()
-    #     cursor.execute(
-    #         "SELECT package_name, optimization_level, dirname FROM packages WHERE status = ?", 
-    #         ("STARTED",)
-    #     )
-    #     res = cursor.fetchall()
-    #     for package_name, optimization_level, dirname in res:
-    #         self.logger.info("Resetting package %s of O%s to NOT_STARTED, removing the directory %s", package_name, optimization_level, dirname)
-    #         os.system(f"rm -rf {os.path.join(self.packages_root, dirname)}")
-    #     cursor.execute("UPDATE packages SET status = ? WHERE status = ?", ("NOT_STARTED", "STARTED"))
-    #     self.db_conn.commit()
-        
-    #     cursor = self.db_conn.cursor()
-    #     cursor.execute(
-    #         "SELECT id, dirname FROM packages WHERE status = ?",
-    #         ("NOT_STARTED", )
-    #     )
-    #     res = cursor.fetchall()
-    #     for id, dirname in res:
-    #         if os.path.exists(os.path.join(self.packages_root, dirname)):
-    #             self.logger.error("Directory %s already exists, delete it", dirname)
-    #             os.system(f"rm -rf {os.path.join(self.packages_root, dirname)}")
-    #             cursor.execute("UPDATE packages SET status = ? WHERE id = ?", ("NOT_STARTED", id))
-    #             self.db_conn.commit()
-                
     
     def db_exec(self, *args):
         db_conn = None
@@ -88,15 +61,20 @@ class CompileProject:
         db_conn.close()
         return res
     
-    def consolidate(self):
+    def consolidate(self, strict=False):
         # Check directories
         self.logger.info("Consolidate.")
         res = self.db_exec(
             "SELECT id, dirname, status FROM packages"
         )
         for _id, dirname, status in tqdm(res):
-            if status != "DONE" and os.path.exists(os.path.join(self.packages_root, dirname)):
-                self.logger.error("Directory %s already exists, delete it", dirname)
+            if strict:
+                need_restore = (status != "DONE" and os.path.exists(os.path.join(self.packages_root, dirname)))
+            else:
+                need_restore = (status == "STARTED")
+            
+            if need_restore:
+                self.logger.info("Directory %s already exists, delete it", dirname)
                 os.system(f"rm -rf {os.path.join(self.packages_root, dirname)}")
                 self.set_package_status(_id, "NOT_STARTED")
             
@@ -130,29 +108,59 @@ class CompileProject:
         self.logger.info("Compiling package %s with optimization_level -O%s in %s", package_name, optimization_level, save_path)
         try:
             os.system(f"mkdir -p {save_path}")
-            command_str = f"/workspace/bin/prepare_user.sh {os.getuid()} {os.getgid()}"
-            command_str += " && "
-            command_str += f"/workspace/bin/prepare_dep.sh {package_name}"
-            command_str += " && "
-            command_str += f"su build /workspace/bin/compile.sh {package_name} {optimization_level}"
+            # Prepare command string
+            command_str = f"compile.sh {package_name} {os.getuid()} {os.getgid()}"
             
-            client = docker.from_env()
-            result = client.containers.run(
-                image=IMAGE,
-                command=[
-                    "/bin/sh", 
-                    "-c", 
-                    command_str
-                ],
-                remove=True,
-                volumes={
-                    os.path.abspath(save_path): {
-                        "bind": "/workspace/package",
-                        "mode": "rw"
-                    }
-                },
-                name=f"{package_name}_O{optimization_level}"
-            )
+            # Prepare environments
+            environments = {
+                "GCC_PARSER_HIJACK_OPTIMIZATION_LEVEL": optimization_level,
+                "GCC_PARSER_HIJACK_DWARF4": "1"
+            }
+            
+            if in_memory:
+                client = docker.from_env()
+                result = client.containers.run(
+                    image=IMAGE,
+                    command=[
+                        "/bin/sh",
+                        "-c",
+                        command_str
+                    ],
+                    remove=True,
+                    environment=environments,
+                    volumes={
+                        os.path.abspath(save_path): {
+                            "bind": "/save",
+                            "mode": "rw"
+                        }
+                    },
+                    tmpfs={
+                        "/workspace": "exec"
+                    },
+                    name=f"{package_name}_O{optimization_level}"
+                )
+            else:
+                # Prepare environments
+                environments["SAVE_PATH"] = "/workspace/package"
+                
+                client = docker.from_env()
+                result = client.containers.run(
+                    image=IMAGE,
+                    command=[
+                        "/bin/sh", 
+                        "-c", 
+                        command_str
+                    ],
+                    remove=True,
+                    environment=environments,
+                    volumes={
+                        os.path.abspath(save_path): {
+                            "bind": "/workspace/package",
+                            "mode": "rw"
+                        }
+                    },
+                    name=f"{package_name}_O{optimization_level}"
+                )
         except docker.errors.APIError:
             return "STARTED"
         except Exception as e:
@@ -169,12 +177,12 @@ class CompileProject:
         else:
             return "COMPILE_ERROR"
         
-    def compile_package(self, package_id, package_name, optimization_level, dirname, retry):
+    def compile_package(self, package_id, package_name, optimization_level, dirname, retry, in_memory):
         status = None
         tried = 0
         self.set_package_status(package_id , "STARTED")
         while True:
-            status = self.compile_package_internal(package_name, optimization_level, dirname)
+            status = self.compile_package_internal(package_name, optimization_level, dirname, in_memory)
             if status == "DONE" or status == "PYTHON_ERROR" or status == "STARTED":
                 break
             elif status == "COMPILE_ERROR":
@@ -209,7 +217,7 @@ class CompileProject:
             })
         return to_ret
     
-def compile_packages(compile_project: CompileProject, retry: int):
+def compile_packages(compile_project: CompileProject, retry: int, in_memory: bool):
     while True:
         packages = compile_project.get_packages_not_started(1)
         if len(packages) == 0:
@@ -220,18 +228,20 @@ def compile_packages(compile_project: CompileProject, retry: int):
             package["package_name"],
             package["optimization_level"],
             package["dirname"],
-            retry
+            retry,
+            in_memory
         )
     
-def compile_packages_parallel(compile_project: CompileProject, retry: int, max_parallel: int):
+def compile_packages_parallel(compile_project: CompileProject, retry: int, max_parallel: int, in_memory: bool):
     import threading
     thread_list = []
+    slow_start_count = 0
     while True:
         for thread in thread_list:
             if not thread.is_alive():
                 thread.join()
                 thread_list.remove(thread)
-        if len(thread_list) >= max_parallel or psutil.cpu_percent() >= 90:
+        if len(thread_list) >= max_parallel or psutil.cpu_percent() >= 80:
             time.sleep(1)
             continue
         packages = compile_project.get_packages_not_started(1)
@@ -245,12 +255,17 @@ def compile_packages_parallel(compile_project: CompileProject, retry: int, max_p
                 package["package_name"],
                 package["optimization_level"],
                 package["dirname"],
-                retry
+                retry,
+                in_memory
             )
         )
         thread.daemon = True
         thread.start()
         thread_list.append(thread)
+        if slow_start_count <= max_parallel:
+            print(f"Slow start {slow_start_count}/{max_parallel}, waiting for {SLOW_START_INTERVAL} seconds")
+            time.sleep(SLOW_START_INTERVAL)
+            slow_start_count += 1
 
 
 @atexit.register    
@@ -273,14 +288,16 @@ def main():
     parser.add_argument("-j", "--parallel", type=int, default=1, help="Max parallel jobs")
     parser.add_argument("-p", "--project", type=str, required=True, help="Project path")
     parser.add_argument("-l", "--list", type=str, required=True, help="List of packages to compile, must be a json file")
+    parser.add_argument("-M", "--in-memory", action="store_true", help="Determines whether to use ramdisk to accelerate compilation")
+    parser.add_argument("-S", "--strict", action="store_true", help="Determines whether consolidate use strict mode, if set, PYTHON_ERROR may be restored")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
     with open(args.list, "r") as f:
         import json
         package_list = json.load(f)
     project = CompileProject(args.project, package_list)
-    project.consolidate()
-    compile_packages_parallel(project, args.retry, args.parallel)
+    project.consolidate(args.strict)
+    compile_packages_parallel(project, args.retry, args.parallel, args.in_memory)
 
 def test():
     logging.basicConfig(level=logging.INFO)
@@ -291,7 +308,7 @@ def test():
     ]
     project = CompileProject(sys.argv[1], packages)
     project.consolidate()
-    compile_packages(project, 3)
+    compile_packages(project, 3, True)
 
 if __name__ == '__main__':
     main()
