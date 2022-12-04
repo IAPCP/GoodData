@@ -114,7 +114,8 @@ class CompileProject:
             # Prepare environments
             environments = {
                 "GCC_PARSER_HIJACK_OPTIMIZATION_LEVEL": optimization_level,
-                "GCC_PARSER_HIJACK_DWARF4": "1"
+                "GCC_PARSER_HIJACK_DWARF4": "1",
+                "DEB_DH_SHLIBDEPS_ARGS_ALL": "--dpkg-shlibdeps-params=--ignore-missing-info" # Fix some deb-build failures
             }
             
             if in_memory:
@@ -232,7 +233,7 @@ def compile_packages(compile_project: CompileProject, retry: int, in_memory: boo
             in_memory
         )
     
-def compile_packages_parallel(compile_project: CompileProject, retry: int, max_parallel: int, in_memory: bool):
+def compile_packages_parallel(compile_project: CompileProject, retry: int, max_parallel: int, in_memory: bool, slow_start: bool = False):
     import threading
     thread_list = []
     slow_start_count = 0
@@ -241,7 +242,7 @@ def compile_packages_parallel(compile_project: CompileProject, retry: int, max_p
             if not thread.is_alive():
                 thread.join()
                 thread_list.remove(thread)
-        if len(thread_list) >= max_parallel or psutil.cpu_percent() >= 80:
+        if len(thread_list) >= max_parallel or psutil.cpu_percent() >= 80 or psutil.virtual_memory().percent >= 85:
             time.sleep(1)
             continue
         packages = compile_project.get_packages_not_started(1)
@@ -262,7 +263,7 @@ def compile_packages_parallel(compile_project: CompileProject, retry: int, max_p
         thread.daemon = True
         thread.start()
         thread_list.append(thread)
-        if slow_start_count <= max_parallel:
+        if slow_start_count <= max_parallel and slow_start:
             print(f"Slow start {slow_start_count}/{max_parallel}, waiting for {SLOW_START_INTERVAL} seconds")
             time.sleep(SLOW_START_INTERVAL)
             slow_start_count += 1
