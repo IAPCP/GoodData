@@ -34,12 +34,13 @@ def analyze_package(graph: Graph, project_root: str, package_name: str, optimiza
     for task_name in tqdm(ld_task_name_list):
         task_url = os.path.join(ld_url, task_name)
         input_node_list = []
-        if os.path.exists(os.path.join(project_root, task_url, "input")):
-            for input_object_name in os.listdir(os.path.join(project_root, task_url, "input")):
-                input_object_url = os.path.join(task_url, "input", input_object_name)
-                input_object_node = create_node(graph, project_root, input_object_url)
-                graph.create(Relationship(input_object_node.__node__, "BELONGS_TO", package_node.__node__))
-                input_node_list.append(input_object_node)
+        for input_object_name in os.listdir(os.path.join(project_root, task_url)):
+            if input_object_name == "output":
+                continue
+            input_object_url = os.path.join(task_url, input_object_name)
+            input_object_node = create_node(graph, project_root, input_object_url)
+            graph.create(Relationship(input_object_node.__node__, "BELONGS_TO", package_node.__node__))
+            input_node_list.append(input_object_node)
         output_node_list = []
         if os.path.exists(os.path.join(project_root, task_url, "output")):
             for output_object_name in os.listdir(os.path.join(project_root, task_url, "output")):
