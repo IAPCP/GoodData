@@ -16,9 +16,6 @@ from tqdm.auto import tqdm
 IMAGE="compile_docker:zbl"
 SLOW_START_INTERVAL=30
 
-def dir_name(package: str, optimization_level: str) -> str:
-    return package + "_O" + optimization_level + "_" + uuid.uuid4().hex
-
 class CompileProject:
     def __init__(self, project_root, package_list=None):
         self.project_root = project_root
@@ -41,7 +38,12 @@ class CompileProject:
                 for optimization_level in ("0", "1", "2", "3", "g", "s", "fast"):
                     cursor.execute(
                         "INSERT INTO packages (package_name, optimization_level, status, dirname) VALUES (?, ?, ?, ?)", 
-                        (package_name, optimization_level, "NOT_STARTED", dir_name(package_name, optimization_level))
+                        (
+                            package_name, 
+                            optimization_level, 
+                            "NOT_STARTED", 
+                            package_name + "_O" + optimization_level + "_" + uuid.uuid4().hex
+                        )
                     )
             self.db_conn.commit()
         else:
