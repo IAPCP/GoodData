@@ -136,5 +136,3 @@ if __name__ == '__main__':
     node2 = create_node(graph, "/home/kjdy/test/testob", "test.c")
     import ipdb; ipdb.set_trace()
     
-    
-        
