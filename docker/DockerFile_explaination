@@ -1,0 +1,46 @@
+This Dockerfile is used to create a Docker image with a specific environment for building and compiling code. Let's go through the steps in the Dockerfile:
+
+1. Base Image: The base image is Ubuntu 20.04.
+    FROM ubuntu:20.04
+2. Copy sources.list: Copy the sources.list file to the /etc/apt/sources.list directory in the container.
+    COPY sources.list /etc/apt/sources.list
+3. Update and Install Packages: Update the package list, upgrade the packages, and install the required packages for building and compiling code.
+    RUN DEBIAN_FRONTEND=noninteractive apt -y update && \
+        DEBIAN_FRONTEND=noninteractive apt -y upgrade && \
+        DEBIAN_FRONTEND=noninteractive apt -y install build-essential curl git wget libgmp-dev libmpfr-dev libmpc-dev python3-pip ninja-build cmake bison flex texinfo dpkg-dev devscripts
+4. Create Directories: Create the necessary directories for ld_hook and gcc_parser.
+    RUN cd /root && \
+        mkdir -p ld_hook/build && \
+        mkdir -p gcc_parser/build
+5. Copy Files: Copy the gcc_parser and ld_hook directories to the container.
+    COPY gcc_parser /root/gcc_parser/gcc_parser
+    COPY ld_hook /root/ld_hook/ld_hook
+6. Build and Install ld_hook: Build and install the ld_hook tool.
+    RUN cd /root/ld_hook/build && \
+        ../ld_hook/configure --prefix=/usr && \
+        make -j${nproc} && \
+        make install
+7. Prepare, Build, and Install gcc_parser: Install the required Python packages, build, and install the gcc_parser tool.
+    RUN cd /root/gcc_parser/build && \
+        pip3 install robotpy-cppheaderparser psutil && \
+        ../gcc_parser/configure --prefix=/usr -enable-language=c,c++ --disable-multilib --disable-werror --disable-bootstrap && \
+        make -j${nproc} && \
+        make install
+8. Update Symlinks: Update the symlinks for libstdc++.so.6 and various GCC-related tools.
+    RUN rm /usr/lib/x86_64-linux-gnu/libstdc++.so.6 && \
+        ln -s /usr/lib64/libstdc++.so.6 /usr/lib/x86_64-linux-gnu/libstdc++.so.6 && \
+        rm /usr/bin/x86_64-linux-gnu-gcc && \
+        ln -s gcc /usr/bin/x86_64-linux-gnu-gcc && \
+        rm /usr/bin/x86_64-linux-gnu-gcc-ar && \
+        ln -s gcc-ar /usr/bin/x86_64-linux-gnu-gcc-ar && \
+        rm /usr/bin/x86_64-linux-gnu-gcc-nm && \
+        ln -s gcc-nm /usr/bin/x86_64-linux-gnu-gcc-nm && \
+        rm /usr/bin/x86_64-linux-gnu-gcc-ranlib && \
+        ln -s gcc-ranlib /usr/bin/x86_64-linux-gnu-gcc-ranlib
+9. Create Workspace: Create a /workspace directory and set its permissions.
+    RUN mkdir -p /workspace && \
+        chmod 1777 /workspace
+10. Copy compile.sh: Copy the compile.sh script to the /usr/bin directory and make it executable.
+    COPY compile.sh /usr/bin/compile.sh
+    RUN chmod +x /usr/bin/compile.sh
+After completing these steps, the Docker image will be ready with the necessary tools and environment for building and compiling code. 
