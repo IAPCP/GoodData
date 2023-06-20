@@ -13,7 +13,7 @@ import psutil
 import argparse
 from tqdm.auto import tqdm
 
-IMAGE="compile_docker:zbl"
+IMAGE="compile_docker:latest"
 SLOW_START_INTERVAL=30
 
 class CompileProject:
@@ -36,13 +36,17 @@ class CompileProject:
             cursor.execute("CREATE TABLE packages (id INTEGER PRIMARY KEY AUTOINCREMENT, package_name TEXT, optimization_level TEXT, status TEXT, dirname TEXT)")
             for package_name in package_list:
                 for optimization_level in ("0", "1", "2", "3", "g", "s", "fast"):
+                    # print(type(optimization_level))
+                    # print(type(uuid.uuid4().hex))
+                    # print(type(package_name))
+                    # print(package_name)
                     cursor.execute(
                         "INSERT INTO packages (package_name, optimization_level, status, dirname) VALUES (?, ?, ?, ?)", 
                         (
-                            package_name, 
+                            package_name["package"], 
                             optimization_level, 
                             "NOT_STARTED", 
-                            package_name + "_O" + optimization_level + "_" + uuid.uuid4().hex
+                            package_name["package"] + "_O" + optimization_level + "_" + uuid.uuid4().hex
                         )
                     )
             self.db_conn.commit()
@@ -119,7 +123,7 @@ class CompileProject:
                 "GCC_PARSER_HIJACK_DWARF4": "1",
                 "DEB_DH_SHLIBDEPS_ARGS_ALL": "--dpkg-shlibdeps-params=--ignore-missing-info" # Fix some deb-build failures
             }
-            
+            # print(f"in_memeory: {in_memory}")
             if in_memory:
                 client = docker.from_env()
                 result = client.containers.run(
@@ -164,8 +168,8 @@ class CompileProject:
                     },
                     name=f"{package_name}_O{optimization_level}"
                 )
-        except docker.errors.APIError:
-            return "STARTED"
+        # except docker.errors.APIError:
+        #     return "STARTED"
         except Exception as e:
             self.logger.error(f"Python error compiling package {package_name} with optimization_level -O{optimization_level}")
             self.logger.error(f"Error: {e}")
